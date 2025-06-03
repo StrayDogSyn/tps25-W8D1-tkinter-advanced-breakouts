@@ -92,7 +92,8 @@ class SpecialEffects:
     """
     Class to handle visual effects for the calculator.
     """
-      @staticmethod
+    
+    @staticmethod
     def division_by_zero_effect(root, result_label):
         """
         Creates a dramatic animated effect when division by zero occurs.
@@ -103,22 +104,20 @@ class SpecialEffects:
         """
         def animate():
             # Store original values safely with defaults
-            original_bg = '#f0f0f0'  # Default fallback
-            original_label_bg = 'lightyellow'  # Default fallback
-            original_label_fg = 'darkgreen'  # Default fallback
+            original_bg = '#f0f0f0'
+            original_label_bg = 'lightyellow'
+            original_label_fg = 'darkgreen'
             
             try:
-                # Check if widgets are still valid before proceeding
-                if not root.winfo_exists() or not result_label.winfo_exists():
-                    return
-                
-                # Try to get current values, but use defaults if fail
+                # Safely get original values
                 try:
-                    original_bg = root.cget('bg')
-                    original_label_bg = result_label.cget('background')
-                    original_label_fg = result_label.cget('foreground')
+                    if root.winfo_exists():
+                        original_bg = root.cget('bg')
+                    if result_label.winfo_exists():
+                        original_label_bg = result_label.cget('background')
+                        original_label_fg = result_label.cget('foreground')
                 except tk.TclError:
-                    pass  # Use defaults if we can't get current values
+                    pass  # Use defaults
                 
                 # Warning messages to cycle through
                 warning_messages = [
@@ -134,13 +133,21 @@ class SpecialEffects:
                 text_colors = ['white', 'yellow', 'black', 'white', 'yellow']
                 
                 # Get original window position safely
-                original_geometry = root.geometry()
+                try:
+                    original_geometry = root.geometry()
+                except tk.TclError:
+                    original_geometry = "500x400+100+100"
                 
                 # Pulse effect with color changes
                 for cycle in range(3):  # 3 cycles of animation
                     for i, (bg_color, text_color, message) in enumerate(zip(bg_colors, text_colors, warning_messages)):
-                        # Check if widgets still exist
-                        if not root.winfo_exists() or not result_label.winfo_exists():
+                        # Check if widgets still exist before each update
+                        try:
+                            if not root.winfo_exists():
+                                return
+                            if not result_label.winfo_exists():
+                                return
+                        except tk.TclError:
                             return
                         
                         try:
@@ -156,15 +163,14 @@ class SpecialEffects:
                             time.sleep(0.3)
                             
                             # Add shake effect
-                            current_geometry = root.geometry()
                             for shake in range(5):
-                                if not root.winfo_exists():
-                                    return
-                                
-                                # Parse current geometry
-                                geometry_parts = current_geometry.split('+')
-                                if len(geometry_parts) >= 3:
-                                    try:
+                                try:
+                                    if not root.winfo_exists():
+                                        return
+                                    
+                                    # Parse current geometry
+                                    geometry_parts = original_geometry.split('+')
+                                    if len(geometry_parts) >= 3:
                                         x = int(geometry_parts[1])
                                         y = int(geometry_parts[2])
                                         
@@ -175,8 +181,8 @@ class SpecialEffects:
                                         root.geometry(f"{geometry_parts[0]}+{shake_x}+{shake_y}")
                                         root.update_idletasks()
                                         time.sleep(0.05)
-                                    except (ValueError, tk.TclError):
-                                        break  # Skip shake if geometry parsing fails
+                                except (ValueError, tk.TclError):
+                                    break  # Skip shake if geometry parsing fails
                             
                             # Return to original position
                             try:
@@ -190,8 +196,8 @@ class SpecialEffects:
                             return
                 
                 # Final dramatic message
-                if root.winfo_exists() and result_label.winfo_exists():
-                    try:
+                try:
+                    if root.winfo_exists() and result_label.winfo_exists():
                         result_label.configure(
                             background='black',
                             foreground='red',
@@ -213,8 +219,8 @@ class SpecialEffects:
                                 root.update_idletasks()
                             except tk.TclError:
                                 break
-                    except tk.TclError:
-                        pass
+                except tk.TclError:
+                    pass
                 
             except Exception as e:
                 print(f"Animation error (handled gracefully): {e}")
@@ -497,12 +503,15 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
         result_var.set("Result will appear here")
         num1_entry.focus()
         # Reset any visual effects
-        root.configure(bg='#f0f0f0')
-        result_label.configure(
-            background="lightyellow",
-            foreground="darkgreen",
-            font=("Arial", 14, "bold")
-        )
+        try:
+            root.configure(bg='#f0f0f0')
+            result_label.configure(
+                background="lightyellow",
+                foreground="darkgreen",
+                font=("Arial", 14, "bold")
+            )
+        except tk.TclError:
+            pass
         print("All fields cleared")
     
     clear_button = ttk.Button(
@@ -561,7 +570,7 @@ def main():
     for widget in root.winfo_children():
         widget.destroy()
     
-    create_enhanced_calculator_widgets(
+    result_label = create_enhanced_calculator_widgets(
         root, num1_var, num2_var, result_var,
         add_func, subtract_func, multiply_func, divide_func
     )
@@ -613,10 +622,11 @@ ENHANCED CALCULATOR IMPLEMENTATION NOTES:
 
 🔧 TECHNICAL IMPROVEMENTS:
 - Modular SpecialEffects class for reusable animations
-- Thread-safe UI updates
+- Thread-safe UI updates with extensive error checking
 - Enhanced error handling with custom exceptions
 - Improved number formatting (removes trailing zeros)
 - Better visual hierarchy with fonts and colors
+- Widget existence checking to prevent TclError exceptions
 
 ⚠️ IMPORTANT TESTING SCENARIOS:
 □ Test all four operations with valid numbers
@@ -624,6 +634,7 @@ ENHANCED CALCULATOR IMPLEMENTATION NOTES:
 □ Test invalid input handling
 □ Test clear functionality after effects
 □ Verify UI responsiveness during animations
+□ Test window closing during animation (should handle gracefully)
 
 🚀 POSSIBLE EXTENSIONS:
 - Add sound effects to the division by zero animation
@@ -631,6 +642,13 @@ ENHANCED CALCULATOR IMPLEMENTATION NOTES:
 - Add particle effects or explosions
 - Implement achievement system for finding easter eggs
 - Add custom themes and color schemes
+
+🛠️ BUG FIXES APPLIED:
+- Added extensive tk.TclError exception handling
+- Widget existence checking before each UI operation
+- Safe defaults for widget properties
+- Graceful animation termination when window is closed
+- Thread-safe UI operations with proper error recovery
 
 Remember: The division by zero effect is designed to be dramatic but 
 educational - it shows users the importance of validating mathematical 
