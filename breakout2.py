@@ -1,6 +1,6 @@
 """
-Breakout #2 – Enhanced Calculator Interface with Division & Special Effects
-Author: [Team Five]
+Enhanced Calculator Interface with Division & Special Effects
+Author: Team Five
 Date: June 2, 2025
 
 Description:
@@ -14,14 +14,13 @@ Enhanced Features:
 2. Special animated warning effect for division by zero
 3. Input validation with error handling
 4. Professional UI layout with visual effects
+5. Auto-clear functionality after successful operations
+6. Exit button and menu system
 """
 
 # Import required modules
 import tkinter as tk
-from tkinter import ttk
-import threading
-import time
-import math
+from tkinter import ttk, messagebox
 
 # ====================================================================
 # CALCULATOR BUSINESS LOGIC
@@ -102,55 +101,64 @@ class SpecialEffects:
             root: The main window
             result_label: The label to animate
         """
-        def animate():
-            # Store original values safely with defaults
-            original_bg = '#f0f0f0'
-            original_label_bg = 'lightyellow'
-            original_label_fg = 'darkgreen'
-            
+        # Store original values safely with defaults
+        original_bg = '#f0f0f0'
+        original_label_bg = 'lightyellow'
+        original_label_fg = 'darkgreen'
+        
+        try:
+            # Safely get original values
+            if root.winfo_exists():
+                original_bg = root.cget('bg')
+            if result_label.winfo_exists():
+                original_label_bg = result_label.cget('background')
+                original_label_fg = result_label.cget('foreground')
+        except tk.TclError:
+            pass  # Use defaults
+        
+        # Warning messages to cycle through
+        warning_messages = [
+            "⚠️ DIVISION BY ZERO! ⚠️",
+            "🚨 MATH ERROR DETECTED! 🚨", 
+            "⛔ INFINITY ALERT! ⛔",
+            "🔥 UNIVERSE BREAKING! 🔥",
+            "💀 CATASTROPHIC ERROR! 💀"
+        ]
+        
+        # Color sequences for dramatic effect
+        bg_colors = ['#FF0000', '#FF4500', '#FFD700', '#FF6347', '#DC143C']
+        text_colors = ['white', 'yellow', 'black', 'white', 'yellow']
+        
+        # Get original window position safely
+        try:
+            original_geometry = root.geometry()
+        except tk.TclError:
+            original_geometry = "650x650+100+100"
+        
+        # Animation state
+        animation_state = {
+            'cycle': 0,
+            'step': 0,
+            'shake_count': 0,
+            'phase': 'pulse'  # pulse, final, fade, restore
+        }
+        
+        def animate_step():
+            """Single animation step using root.after() for proper thread safety"""
             try:
-                # Safely get original values
-                try:
-                    if root.winfo_exists():
-                        original_bg = root.cget('bg')
-                    if result_label.winfo_exists():
-                        original_label_bg = result_label.cget('background')
-                        original_label_fg = result_label.cget('foreground')
-                except tk.TclError:
-                    pass  # Use defaults
+                # Check if widgets still exist
+                if not root.winfo_exists() or not result_label.winfo_exists():
+                    return
                 
-                # Warning messages to cycle through
-                warning_messages = [
-                    "⚠️ DIVISION BY ZERO! ⚠️",
-                    "🚨 MATH ERROR DETECTED! 🚨", 
-                    "⛔ INFINITY ALERT! ⛔",
-                    "🔥 UNIVERSE BREAKING! 🔥",
-                    "💀 CATASTROPHIC ERROR! 💀"
-                ]
-                
-                # Color sequences for dramatic effect
-                bg_colors = ['#FF0000', '#FF4500', '#FFD700', '#FF6347', '#DC143C']
-                text_colors = ['white', 'yellow', 'black', 'white', 'yellow']
-                
-                # Get original window position safely
-                try:
-                    original_geometry = root.geometry()
-                except tk.TclError:
-                    original_geometry = "500x400+100+100"
-                
-                # Pulse effect with color changes
-                for cycle in range(3):  # 3 cycles of animation
-                    for i, (bg_color, text_color, message) in enumerate(zip(bg_colors, text_colors, warning_messages)):
-                        # Check if widgets still exist before each update
-                        try:
-                            if not root.winfo_exists():
-                                return
-                            if not result_label.winfo_exists():
-                                return
-                        except tk.TclError:
-                            return
-                        
-                        try:
+                if animation_state['phase'] == 'pulse':
+                    # Pulse effect with color changes
+                    if animation_state['cycle'] < 3:  # 3 cycles
+                        if animation_state['step'] < 5:  # 5 messages per cycle
+                            i = animation_state['step']
+                            bg_color = bg_colors[i]
+                            text_color = text_colors[i]
+                            message = warning_messages[i]
+                            
                             # Update colors and message
                             root.configure(bg=bg_color)
                             result_label.configure(
@@ -159,93 +167,108 @@ class SpecialEffects:
                                 text=message,
                                 font=("Arial", 16, "bold")
                             )
-                            root.update_idletasks()
-                            time.sleep(0.3)
                             
-                            # Add shake effect
-                            for shake in range(5):
-                                try:
-                                    if not root.winfo_exists():
-                                        return
-                                    
-                                    # Parse current geometry
-                                    geometry_parts = original_geometry.split('+')
-                                    if len(geometry_parts) >= 3:
-                                        x = int(geometry_parts[1])
-                                        y = int(geometry_parts[2])
-                                        
-                                        # Create shake offset
-                                        shake_x = x + ((-1) ** shake) * 10
-                                        shake_y = y + ((-1) ** shake) * 5
-                                        
-                                        root.geometry(f"{geometry_parts[0]}+{shake_x}+{shake_y}")
-                                        root.update_idletasks()
-                                        time.sleep(0.05)
-                                except (ValueError, tk.TclError):
-                                    break  # Skip shake if geometry parsing fails
+                            # Schedule next step
+                            animation_state['step'] += 1
+                            root.after(300, animate_step)  # 300ms delay
                             
-                            # Return to original position
-                            try:
-                                root.geometry(original_geometry)
-                                root.update_idletasks()
-                            except tk.TclError:
-                                pass
-                                
-                        except tk.TclError:
-                            # Widget may have been destroyed, exit gracefully
-                            return
+                        else:
+                            # End of message cycle, start shake effect
+                            animation_state['step'] = 0
+                            animation_state['shake_count'] = 0
+                            start_shake()
+                    else:
+                        # Move to final phase
+                        animation_state['phase'] = 'final'
+                        root.after(100, animate_step)
                 
-                # Final dramatic message
-                try:
-                    if root.winfo_exists() and result_label.winfo_exists():
-                        result_label.configure(
-                            background='black',
-                            foreground='red',
-                            text="🔥 DIVISION BY ZERO IS FORBIDDEN! 🔥",
-                            font=("Arial", 14, "bold")
-                        )
-                        root.configure(bg='black')
-                        root.update_idletasks()
-                        time.sleep(2)
-                        
-                        # Fade back to normal
-                        fade_colors = ['#330000', '#660000', '#990000', '#CC0000', original_bg]
-                        for fade_color in fade_colors:
-                            if not root.winfo_exists():
-                                return
-                            try:
-                                root.configure(bg=fade_color)
-                                time.sleep(0.2)
-                                root.update_idletasks()
-                            except tk.TclError:
-                                break
-                except tk.TclError:
-                    pass
+                elif animation_state['phase'] == 'final':
+                    # Final dramatic message
+                    result_label.configure(
+                        background='black',
+                        foreground='red',
+                        text="🔥 DIVISION BY ZERO IS FORBIDDEN! 🔥",
+                        font=("Arial", 14, "bold")
+                    )
+                    root.configure(bg='black')
+                    
+                    # Wait 5 seconds as requested by user, then move to fade
+                    animation_state['phase'] = 'fade'
+                    animation_state['step'] = 0
+                    root.after(5000, animate_step)  # 5 second delay
                 
+                elif animation_state['phase'] == 'fade':
+                    # Fade back to normal
+                    fade_colors = ['#330000', '#660000', '#990000', '#CC0000', original_bg]
+                    if animation_state['step'] < len(fade_colors):
+                        fade_color = fade_colors[animation_state['step']]
+                        root.configure(bg=fade_color)
+                        animation_state['step'] += 1
+                        root.after(200, animate_step)  # 200ms per fade step
+                    else:
+                        # Move to restore phase
+                        animation_state['phase'] = 'restore'
+                        root.after(100, animate_step)
+                
+                elif animation_state['phase'] == 'restore':
+                    # Restore original appearance
+                    root.configure(bg=original_bg)
+                    result_label.configure(
+                        background=original_label_bg,
+                        foreground=original_label_fg,
+                        text="Please enter valid numbers (divisor cannot be zero)",
+                        font=("Arial", 14, "bold")
+                    )
+                    print("Division by zero animation completed!")
+                    
+            except tk.TclError:
+                # Widget was destroyed during animation
+                print("Animation stopped - window was closed")
+                return
             except Exception as e:
-                print(f"Animation error (handled gracefully): {e}")
-            
-            finally:
-                # Restore original appearance safely
+                print(f"Animation error: {e}")
+          def start_shake():
+            """Start the shake effect"""
+            def shake_step():
                 try:
-                    if root.winfo_exists():
-                        root.configure(bg=original_bg)
-                    if result_label.winfo_exists():
-                        result_label.configure(
-                            background=original_label_bg,
-                            foreground=original_label_fg,
-                            text="Please enter valid numbers (divisor cannot be zero)",
-                            font=("Arial", 14, "bold")
-                        )
-                    if root.winfo_exists():
-                        root.update_idletasks()
+                    if not root.winfo_exists() or animation_state['shake_count'] >= 5:
+                        # End shake, return to original position and continue with next cycle
+                        try:
+                            root.geometry(original_geometry)
+                        except tk.TclError:
+                            pass
+                        animation_state['cycle'] += 1
+                        animation_state['step'] = 0
+                        animation_state['shake_count'] = 0
+                        root.after(100, animate_step)
+                        return
+                    
+                    # Parse current geometry for shake effect
+                    try:
+                        geometry_parts = original_geometry.split('+')
+                        if len(geometry_parts) >= 3:
+                            x = int(geometry_parts[1])
+                            y = int(geometry_parts[2])
+                            
+                            # Create shake offset
+                            shake_x = x + ((-1) ** animation_state['shake_count']) * 15
+                            shake_y = y + ((-1) ** animation_state['shake_count']) * 8
+                            
+                            root.geometry(f"{geometry_parts[0]}+{shake_x}+{shake_y}")
+                    except (ValueError, tk.TclError):
+                        pass  # Skip this shake if geometry parsing fails
+                    
+                    animation_state['shake_count'] += 1
+                    root.after(50, shake_step)  # 50ms shake interval
+                    
                 except tk.TclError:
-                    # Window was closed during animation, that's okay
-                    pass
+                    return
+            
+            shake_step()
         
-        # Run animation in a separate thread to avoid blocking the UI
-        animation_thread = threading.Thread(target=animate, daemon=True)
-        animation_thread.start()
+        # Start the animation
+        print("Starting division by zero visual effect...")
+        root.after(100, animate_step)  # Start after 100ms
 
 
 # ====================================================================
@@ -306,14 +329,14 @@ def create_calculation_functions(root, num1_var, num2_var, result_var, result_la
     """
     Creates event handler functions for each arithmetic operation.
     """
-    
-    def perform_calculation(operation_name, operation_func):
+      def perform_calculation(operation_name, operation_func):
         """
         Generic function to perform calculations with error handling.
         """
         num1_str = num1_var.get()
         num2_str = num2_var.get()
-          # Validate inputs
+        
+        # Validate inputs
         is_valid1, num1 = Calculator.validate_input(num1_str)
         is_valid2, num2 = Calculator.validate_input(num2_str)
         
@@ -478,9 +501,8 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
     
     button_frame = ttk.Frame(main_frame)
     button_frame.pack(pady=20)
-    
-    # Create a 2x2 grid for the four operation buttons
-      # Top row
+      # Create a 2x2 grid for the four operation buttons
+    # Top row
     top_frame = ttk.Frame(button_frame)
     top_frame.pack(pady=5)
     
@@ -563,8 +585,9 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
         """Clears all input fields and result display."""
         num1_var.set("")
         num2_var.set("")
-        result_var.set("Result will appear here")
-        num1_entry.focus()        # Reset any visual effects
+        result_var.set("Result will appear here")        num1_entry.focus()
+        
+        # Reset any visual effects
         try:
             root.configure(bg='#f0f0f0')
             result_label.configure(
