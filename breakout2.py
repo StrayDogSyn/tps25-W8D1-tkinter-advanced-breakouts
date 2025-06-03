@@ -258,10 +258,29 @@ def create_calculator_app():
     """
     root = tk.Tk()
     root.title("Enhanced Calculator with Division - Breakout #2")
-    root.geometry("500x400")
+    root.geometry("650x650")
     root.resizable(False, False)
     root.eval('tk::PlaceWindow . center')
     root.configure(bg='#f0f0f0')
+    
+    # Create menu bar with File > Exit option
+    menubar = tk.Menu(root)
+    root.config(menu=menubar)
+    
+    # File menu
+    file_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="File", menu=file_menu)
+    
+    def safe_exit():
+        """Safely exits the application."""
+        print("Exiting calculator via menu...")
+        root.quit()
+        root.destroy()
+    
+    file_menu.add_command(label="Exit", command=safe_exit, accelerator="Esc")
+    file_menu.add_separator()
+    file_menu.add_command(label="About", command=lambda: print("Enhanced Calculator v2.0 - Team Five"))
+    
     return root
 
 
@@ -294,8 +313,7 @@ def create_calculation_functions(root, num1_var, num2_var, result_var, result_la
         """
         num1_str = num1_var.get()
         num2_str = num2_var.get()
-        
-        # Validate inputs
+          # Validate inputs
         is_valid1, num1 = Calculator.validate_input(num1_str)
         is_valid2, num2 = Calculator.validate_input(num2_str)
         
@@ -314,6 +332,10 @@ def create_calculation_functions(root, num1_var, num2_var, result_var, result_la
             
             result_var.set(result_text)
             print(f"{operation_name}: {num1} and {num2} = {result}")
+            
+            # Clear input boxes after successful operation
+            num1_var.set("")
+            num2_var.set("")
             
         except ZeroDivisionError:
             # Trigger the special division by zero effect
@@ -409,6 +431,48 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
     num1_entry.focus()
     
     # ----------------------------------------------------------------
+    # AUTO-CLEAR HELPER FUNCTION
+    # ----------------------------------------------------------------
+    def auto_clear_and_focus():
+        """Helper function to clear inputs and return focus after successful calculation."""
+        num1_var.set("")
+        num2_var.set("")
+        num1_entry.focus()
+    
+    # Update calculation functions to include auto-clear functionality
+    if add_func:
+        original_add = add_func
+        def enhanced_add():
+            original_add()
+            # Only clear if calculation was successful (check if result shows a number)
+            if "Result:" in result_var.get():
+                auto_clear_and_focus()
+        add_func = enhanced_add
+    
+    if subtract_func:
+        original_subtract = subtract_func
+        def enhanced_subtract():
+            original_subtract()
+            if "Result:" in result_var.get():
+                auto_clear_and_focus()
+        subtract_func = enhanced_subtract
+    
+    if multiply_func:
+        original_multiply = multiply_func
+        def enhanced_multiply():
+            original_multiply()
+            if "Result:" in result_var.get():
+                auto_clear_and_focus()
+        multiply_func = enhanced_multiply
+    
+    if divide_func:
+        original_divide = divide_func
+        def enhanced_divide():
+            original_divide()
+            if "Result:" in result_var.get():
+                auto_clear_and_focus()
+        divide_func = enhanced_divide
+      # ----------------------------------------------------------------
     # OPERATION BUTTONS SECTION (Now with 4 buttons!)
     # ----------------------------------------------------------------
     
@@ -416,8 +480,7 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
     button_frame.pack(pady=20)
     
     # Create a 2x2 grid for the four operation buttons
-    
-    # Top row
+      # Top row
     top_frame = ttk.Frame(button_frame)
     top_frame.pack(pady=5)
     
@@ -501,8 +564,7 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
         num1_var.set("")
         num2_var.set("")
         result_var.set("Result will appear here")
-        num1_entry.focus()
-        # Reset any visual effects
+        num1_entry.focus()        # Reset any visual effects
         try:
             root.configure(bg='#f0f0f0')
             result_label.configure(
@@ -514,6 +576,15 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
             pass
         print("All fields cleared")
     
+    def safe_close():
+        """Safely closes the application with confirmation."""
+        print("Closing Enhanced Calculator...")
+        try:
+            root.quit()  # Stops the mainloop
+            root.destroy()  # Destroys the window
+        except tk.TclError:
+            pass  # Window already closed
+    
     clear_button = ttk.Button(
         utility_frame,
         text="Clear All 🔄",
@@ -522,13 +593,17 @@ def create_enhanced_calculator_widgets(root, num1_var, num2_var, result_var,
     )
     clear_button.pack(side=tk.LEFT, padx=5)
     
+    # Enhanced close button with better styling
     close_button = ttk.Button(
         utility_frame,
-        text="Close ❌",
-        command=root.destroy,
-        width=15
+        text="Exit Calculator ❌",
+        command=safe_close,
+        width=18
     )
     close_button.pack(side=tk.LEFT, padx=5)
+    
+    # Add keyboard shortcut for closing (Escape key)
+    root.bind('<Escape>', lambda event: safe_close())
     
     # Return the result label so it can be passed to the effect functions
     return result_label
